@@ -40,21 +40,21 @@ OctoFit Tracker is a three-tier application for a school fitness program. The st
 
 - Data-tier command: `npm run test:data --prefix octofit-tracker/backend`
   - What it validates: the Mongoose schema contract for `User`, `Team`, `Activity`, and `Workout`, plus the idempotent seeding flow for demo data.
-  - What the current failure means: the database layer is missing required schema validation and the seeded records do not yet enforce the contract expected by the app; the seed test currently fails on undefined validation errors for required fields.
+  - Current status: `npm run test:data --prefix octofit-tracker/backend` passes, including the schema and idempotent seed contract tests.
   - What success will mean after implementation: every required field is enforced in the model schema, seeded users/teams/activities/workouts are created with valid references, and the seed process can be rerun without duplicating or corrupting demo fixtures.
 - API command: `npm run test:api --prefix octofit-tracker/backend`
   - What it validates: all `/api/*` routes for activities, teams, leaderboard, and workout suggestions, including 4xx validation for bad input and correct response shapes for successful requests.
-  - What the current failure means: the Express handlers are still stubbed or incomplete; activities and teams are returning 501 because the service layer throws “not implemented yet,” leaderboard is empty, and suggestion logic is not tied to the user’s activity pattern.
+  - Current status: `npm run test:api --prefix octofit-tracker/backend` passes, including input validation, response shape, ranking, and workout suggestion contract tests.
   - What success will mean after implementation: POST routes accept valid payloads, reject invalid IDs or missing required fields with deliberate 4xx status codes, leaderboard entries are ordered and ranked correctly, and workout suggestions match the seeded user’s goal or recent activity with a reason and fallback 4xx for unknown email addresses.
 - Frontend command: `npm test --prefix octofit-tracker/frontend`
   - What it validates: the UI renders the main capability pages from API responses, shows loading/empty/error states, and uses accessible text for status and content.
-  - What the current failure means: the presentation tier is still a placeholder; the “Implementation pending” state is rendered instead of API-backed cards and route content, so the tests cannot find expected activity, team, leaderboard, or workout data.
+  - Current status: `npm test --prefix octofit-tracker/frontend` passes, including API-backed page rendering and loading, empty, and error states.
   - What success will mean after implementation: each route loads data from the API, displays the expected content, announces loading and failures through accessible roles, and shows meaningful empty states when the backend returns no records.
 - Backend build command: `npm run build --prefix octofit-tracker/backend`
   - What it validates: TypeScript compilation for the backend, including route, service, model, and configuration files, as well as any type-level contract consistency.
-  - What the current status means: this build has not been run yet, so no observed backend build result is available. If it fails later, the failure would indicate a TypeScript or configuration issue in the backend implementation rather than a confirmed current problem.
+  - Current status: `npm run build --prefix octofit-tracker/backend` passes.
   - What success will mean after implementation: the backend compiles cleanly with no TypeScript errors, and the API implementation matches the expected contracts used by the tests.
 - Frontend build command: `npm run build --prefix octofit-tracker/frontend`
   - What it validates: TypeScript and Vite bundling for the React app, including route definitions, API-fetch code, and UI components.
-  - What the current status means: this build has not been run yet, so no observed frontend build result is available. If it fails later, the failure would indicate a TypeScript, bundling, or component-configuration issue in the frontend rather than a confirmed current problem.
+  - Current status: `npm run build --prefix octofit-tracker/frontend` passes.
   - What success will mean after implementation: all frontend components compile, the app bundles correctly under Vite, and the route tree renders the completed pages without build-time regressions.

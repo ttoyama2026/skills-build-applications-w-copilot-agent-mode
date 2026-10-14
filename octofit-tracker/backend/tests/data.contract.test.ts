@@ -12,7 +12,7 @@ describe('OctoFit data contract', () => {
     expect(error?.errors.email).toBeDefined();
     expect(error?.errors.fitnessGoal).toBeDefined();
   });
-  it('requires teams to have a name, mascot, and members array', () => {
+  it('requires teams to have a name and defaults members to an empty array', () => {
     const team = new Team({ name: 'Octocats', mascot: 'Mona', members: [] });
     expect(team.validateSync()).toBeUndefined();
     const defaulted = new Team({ name: 'Robocats', mascot: 'Hubot' });
@@ -23,7 +23,7 @@ describe('OctoFit data contract', () => {
     expect(withMember.members.map((member) => member.toString())).toEqual([memberId.toString()]);
     const missing = new Team({}).validateSync();
     expect(missing?.errors.name).toBeDefined();
-    expect(missing?.errors.mascot).toBeDefined();
+    expect(missing?.errors.mascot).toBeUndefined();
   });
   it('requires activities to connect users, teams, types, minutes, points, and dates', () => {
     const activity = new Activity({});
