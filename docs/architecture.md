@@ -28,22 +28,33 @@ OctoFit Tracker is a three-tier application for a school fitness program. The st
 
 ## Implementation decisions
 
-Record your plan here before editing code.
-
-- Presentation tier decision:
-- Logic tier decision:
-- Data tier decision:
-- Activity tracking approach:
-- Team management approach:
-- Leaderboard approach:
-- Workout suggestions approach:
+- Presentation tier decision: Keep the React app thin and route-driven: pages render API-backed data with clear states for loading, empty results, and errors, while shared Bootstrap styling is used for consistent accessible layouts.
+- Logic tier decision: Centralize API behavior in explicit service functions behind Express routes; keep validation and business rules in the service layer and ensure deliberate 4xx responses for invalid IDs, missing fields, and unknown users instead of leaking framework or cast errors.
+- Data tier decision: Use Mongoose schemas as the canonical contract for required fields and relationships, with MongoDB seed data that is idempotent and preserves unrelated fixtures while reconciling demo users and team membership.
+- Activity tracking approach: Validate `userId` and `teamId` as real IDs, reject malformed or missing references with 4xx responses, and persist the submitted `user`, `team`, `type`, and `minutes` with computed `points` and `occurredAt`.
+- Team management approach: Require a non-empty team `name` and default `members` to an empty array, allow creation of teams with member references, and list memberships consistently from the stored Team documents. A team without a name should be rejected with `400` as called for by the API contract.
+- Leaderboard approach: Aggregate total points per team from activities, sort descending by total points, and assign 1-based ranks after ordering so the team standings reflect the API contract exactly.
+- Workout suggestions approach: Match suggestions to a user by email, analyze the user’s recent fitness goal and activity patterns, and return the most relevant workout focus with a reason that explains the match while returning a 4xx for unknown emails.
 
 ## Test plan
 
-Record the commands you run and what each failure means.
-
 - Data-tier command: `npm run test:data --prefix octofit-tracker/backend`
+  - What it validates: the Mongoose schema contract for `User`, `Team`, `Activity`, and `Workout`, plus the idempotent seeding flow for demo data.
+  - What the current failure means: the database layer is missing required schema validation and the seeded records do not yet enforce the contract expected by the app; the seed test currently fails on undefined validation errors for required fields.
+  - What success will mean after implementation: every required field is enforced in the model schema, seeded users/teams/activities/workouts are created with valid references, and the seed process can be rerun without duplicating or corrupting demo fixtures.
 - API command: `npm run test:api --prefix octofit-tracker/backend`
+  - What it validates: all `/api/*` routes for activities, teams, leaderboard, and workout suggestions, including 4xx validation for bad input and correct response shapes for successful requests.
+  - What the current failure means: the Express handlers are still stubbed or incomplete; activities and teams are returning 501 because the service layer throws “not implemented yet,” leaderboard is empty, and suggestion logic is not tied to the user’s activity pattern.
+  - What success will mean after implementation: POST routes accept valid payloads, reject invalid IDs or missing required fields with deliberate 4xx status codes, leaderboard entries are ordered and ranked correctly, and workout suggestions match the seeded user’s goal or recent activity with a reason and fallback 4xx for unknown email addresses.
 - Frontend command: `npm test --prefix octofit-tracker/frontend`
+  - What it validates: the UI renders the main capability pages from API responses, shows loading/empty/error states, and uses accessible text for status and content.
+  - What the current failure means: the presentation tier is still a placeholder; the “Implementation pending” state is rendered instead of API-backed cards and route content, so the tests cannot find expected activity, team, leaderboard, or workout data.
+  - What success will mean after implementation: each route loads data from the API, displays the expected content, announces loading and failures through accessible roles, and shows meaningful empty states when the backend returns no records.
 - Backend build command: `npm run build --prefix octofit-tracker/backend`
+  - What it validates: TypeScript compilation for the backend, including route, service, model, and configuration files, as well as any type-level contract consistency.
+  - What the current status means: this build has not been run yet, so no observed backend build result is available. If it fails later, the failure would indicate a TypeScript or configuration issue in the backend implementation rather than a confirmed current problem.
+  - What success will mean after implementation: the backend compiles cleanly with no TypeScript errors, and the API implementation matches the expected contracts used by the tests.
 - Frontend build command: `npm run build --prefix octofit-tracker/frontend`
+  - What it validates: TypeScript and Vite bundling for the React app, including route definitions, API-fetch code, and UI components.
+  - What the current status means: this build has not been run yet, so no observed frontend build result is available. If it fails later, the failure would indicate a TypeScript, bundling, or component-configuration issue in the frontend rather than a confirmed current problem.
+  - What success will mean after implementation: all frontend components compile, the app bundles correctly under Vite, and the route tree renders the completed pages without build-time regressions.
