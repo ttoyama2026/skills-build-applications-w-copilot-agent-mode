@@ -40,6 +40,15 @@ describe('OctoFit API contract', () => {
       expect(response.status).toBeGreaterThanOrEqual(400);
       expect(response.status).toBeLessThan(500);
     }
+    for (const minutes of ['30', true, 0, -5]) {
+      const response = await request(app).post('/api/activities').send({
+        userId: user._id.toString(),
+        teamId: team._id.toString(),
+        type: 'run',
+        minutes,
+      });
+      expect(response.status).toBe(400);
+    }
     expect(await Activity.countDocuments()).toBe(0);
     const created = await request(app).post('/api/activities').send({ userId: user._id.toString(), teamId: team._id.toString(), type: 'run', minutes: 30 });
     expect(created.status).toBe(201);
@@ -62,10 +71,30 @@ describe('OctoFit API contract', () => {
     expect(listed.body.teams).toHaveLength(1);
     expect(listed.body.teams[0]).toMatchObject({ name: 'Octocats', mascot: 'Mona' });
     expect(listed.body.teams[0].members.map((id: string) => id.toString())).toContain(member._id.toString());
+
+    const withoutMascot = await request(app).post('/api/teams').send({ name: 'Robocats' });
+    expect(withoutMascot.status).toBe(201);
+    expect(withoutMascot.body.team.name).toBe('Robocats');
+  });
+  it('rejects malformed and nonexistent team members', async () => {
+    const payload = { name: 'Octocats', mascot: 'Mona' };
+    const malformed = await request(app).post('/api/teams').send({ ...payload, members: { id: 'not-an-array' } });
+    expect(malformed.status).toBe(400);
+
+    const invalidId = await request(app).post('/api/teams').send({ ...payload, members: ['not-an-id'] });
+    expect(invalidId.status).toBe(400);
+
+    const nonexistentUser = await request(app).post('/api/teams').send({
+      ...payload,
+      members: [new mongoose.Types.ObjectId().toString()],
+    });
+    expect(nonexistentUser.status).toBe(400);
+    expect(await Team.countDocuments()).toBe(0);
   });
   it('orders leaderboard entries by total points', async () => {
     const mona = await createUserAndTeam('Mona', 'mona@example.com', 'Mona', 'Octocats');
     const hubot = await createUserAndTeam('Hubot', 'hubot@example.com', 'Hubot', 'Robocats');
+    await Team.create({ name: 'Idle team', mascot: 'Idle' });
     await Activity.create([
       { user: mona.user._id, team: mona.team._id, type: 'run', minutes: 25, points: 25, occurredAt: new Date() },
       { user: hubot.user._id, team: hubot.team._id, type: 'cycle', minutes: 20, points: 20, occurredAt: new Date() },
@@ -76,6 +105,7 @@ describe('OctoFit API contract', () => {
     expect(response.body.leaderboard.map(({ teamName, totalPoints, rank }: { teamName: string; totalPoints: number; rank: number }) => ({ teamName, totalPoints, rank }))).toEqual([
       { teamName: 'Robocats', totalPoints: 35, rank: 1 },
       { teamName: 'Octocats', totalPoints: 25, rank: 2 },
+      { teamName: 'Idle team', totalPoints: 0, rank: 3 },
     ]);
   });
   it('suggests workouts that match each user activity pattern', async () => {
@@ -94,6 +124,8 @@ describe('OctoFit API contract', () => {
     const monaResponse = await request(app).get('/api/workouts/suggestions/mona%40example.com');
     expect(monaResponse.status).toBe(200);
     expect(monaResponse.body.suggestions[0]).toMatchObject({ title: 'Intervals', focus: 'endurance', reason: expect.stringMatching(/run|endurance|activity/i) });
+    expect(monaResponse.body.suggestions[0].reason).toMatch(/recent run activity/i);
+    expect(monaResponse.body.suggestions[0].reason).not.toMatch(/fitness goal/i);
 
     const hubotResponse = await request(app).get('/api/workouts/suggestions/hubot%40example.com');
     expect(hubotResponse.status).toBe(200);
@@ -102,5 +134,24 @@ describe('OctoFit API contract', () => {
     const unknownResponse = await request(app).get('/api/workouts/suggestions/nobody%40example.com');
     expect(unknownResponse.status).toBeGreaterThanOrEqual(400);
     expect(unknownResponse.status).toBeLessThan(500);
+  });
+  it('returns no workout suggestions when no workout matches the preferred focus', async () => {
+    await User.create({ name: 'Mona', email: 'mona@example.com', fitnessGoal: 'mobility' });
+    await Workout.create({ title: 'Intervals', focus: 'endurance', minutes: 30, difficulty: 'moderate' });
+
+    const response = await request(app).get('/api/workouts/suggestions/mona%40example.com');
+
+    expect(response.status).toBe(200);
+    expect(response.body.suggestions).toEqual([]);
+  });
+  it('explains when a workout is selected from the fitness goal', async () => {
+    await User.create({ name: 'Mona', email: 'mona@example.com', fitnessGoal: 'strength' });
+    await Workout.create({ title: 'Strength Circuit', focus: 'strength', minutes: 30, difficulty: 'moderate' });
+
+    const response = await request(app).get('/api/workouts/suggestions/mona%40example.com');
+
+    expect(response.status).toBe(200);
+    expect(response.body.suggestions[0].reason).toMatch(/fitness goal/i);
+    expect(response.body.suggestions[0].reason).not.toMatch(/recent activity/i);
   });
 });
