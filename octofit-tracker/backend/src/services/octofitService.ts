@@ -56,8 +56,8 @@ export async function createTeam(input: unknown) {
   if (typeof name !== 'string' || !name.trim()) {
     throw Object.assign(new Error('name is required'), { status: 400 });
   }
-  if (mascot !== undefined && (typeof mascot !== 'string' || !mascot.trim())) {
-    throw Object.assign(new Error('mascot must be a non-empty string when provided'), { status: 400 });
+  if (typeof mascot !== 'string' || !mascot.trim()) {
+    throw Object.assign(new Error('mascot is required'), { status: 400 });
   }
 
   if (members !== undefined && !Array.isArray(members)) {
@@ -80,7 +80,7 @@ export async function createTeam(input: unknown) {
 
   return Team.create({
     name: name.trim(),
-    ...(mascot === undefined ? {} : { mascot: mascot.trim() }),
+    mascot: mascot.trim(),
     members: memberObjectIds,
   });
 }
